@@ -1,0 +1,191 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation Template to create a VPC with Public and Private Subnets.
+
+Mappings:
+  SubnetConfig:
+    publicSubnet1:
+      CidrBlock: 172.16.0.0/18
+      AvailabilityZone: ap-south-1a
+      Value: publicSubnet1
+    publicSubnet2:
+      CidrBlock: 172.16.64.0/18
+      AvailabilityZone: ap-south-1b
+      Value: publicSubnet2
+    privateSubnet1:
+      CidrBlock: 172.16.128.0/18
+      AvailabilityZone: ap-south-1a
+      Value: privateSubnet1
+    privateSubnet2:
+      CidrBlock: 172.16.192.0/18
+      AvailabilityZone: ap-south-1b
+      Value: privateSubnet2
+
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 172.16.0.0/16
+      InstanceTenancy: default
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: myVPC
+        - Key: Environment
+          Value: PROD
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: myIGW
+        - Key: Environment
+          Value: PROD
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref myVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  publicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !FindInMap [SubnetConfig, publicSubnet1, CidrBlock]
+      AvailabilityZone: !FindInMap [SubnetConfig, publicSubnet1, AvailabilityZone]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !FindInMap [SubnetConfig, publicSubnet1, Value]
+        - Key: Environment
+          Value: PROD
+
+  publicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !FindInMap [SubnetConfig, publicSubnet2, CidrBlock]
+      AvailabilityZone: !FindInMap [SubnetConfig, publicSubnet2, AvailabilityZone]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !FindInMap [SubnetConfig, publicSubnet2, Value]
+        - Key: Environment
+          Value: PROD
+
+  privateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !FindInMap [SubnetConfig, privateSubnet1, CidrBlock]
+      AvailabilityZone: !FindInMap [SubnetConfig, privateSubnet1, AvailabilityZone]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !FindInMap [SubnetConfig, privateSubnet1, Value]
+        - Key: Environment
+          Value: PROD
+
+  privateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !FindInMap [SubnetConfig, privateSubnet2, CidrBlock]
+      AvailabilityZone: !FindInMap [SubnetConfig, privateSubnet2, AvailabilityZone]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !FindInMap [SubnetConfig, privateSubnet2, Value]
+        - Key: Environment
+          Value: PROD
+
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: publicSubnet1
+    Properties:
+      Domain: vpc
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    DependsOn: NATGatewayEIP
+    Properties:
+      AllocationId: !GetAtt NATGatewayEIP.AllocationId
+      SubnetId: !Ref publicSubnet1
+      Tags:
+        - Key: Name
+          Value: myNATGateway
+        - Key: Environment
+          Value: PROD
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+        - Key: Name
+          Value: PrivateRouteTable
+        - Key: Environment
+          Value: PROD
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref privateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref privateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+        - Key: Name
+          Value: PublicRouteTable
+        - Key: Environment
+          Value: PROD
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref publicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref publicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+Outputs:
+  VPCId:
+    Description: VPC ID
+    Value: !Ref myVPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VPCId"
+  PublicSubnet1Id:
+    Description: Public Subnet 1 ID
+    Value: !Ref publicSubnet1
+  PublicSubnet2Id:
+    Description: Public Subnet 2 ID
+    Value: !Ref publicSubnet2
+  PrivateSubnet1Id:
+    Description: Private Subnet 1 ID
+    Value: !Ref privateSubnet1
+  PrivateSubnet2Id:
+    Description: Private Subnet 2 ID
+    Value: !Ref privateSubnet2
+  
