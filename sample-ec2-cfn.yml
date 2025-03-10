@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation Template to create an EC2 instance.
+
+Resources:
+  BastionHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: bastion
+      ImageId: ami-0d682f26195e9ec0f
+      SecurityGroupIds:
+        - Fn::ImportValue: sampleSGstack-bastionSGId
+      SubnetId:
+        Fn::ImportValue: sampleVPCstack-publicSubnet1ID
+      Tags:
+        - Key: Name
+          Value: bastion-host
+        - Key: Environment
+          Value: PROD
+  AppHost1:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: bastion
+      ImageId: ami-0d682f26195e9ec0f
+      SecurityGroupIds:
+        - Fn::ImportValue: sampleSGstack-webSGId
+      SubnetId:
+        Fn::ImportValue: sampleVPCstack-privateSubnet1ID
+      Tags:
+        - Key: Name
+          Value: app-host1
+        - Key: Environment
+          Value: PROD
+  AppHost2:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: bastion
+      ImageId: ami-0d682f26195e9ec0f
+      SecurityGroupIds:
+        - Fn::ImportValue: sampleSGstack-webSGId
+      SubnetId:
+        Fn::ImportValue: sampleVPCstack-privateSubnet2ID
+      Tags:
+        - Key: Name
+          Value: app-host2
+        - Key: Environment
+          Value: PROD
+
+Outputs:
+  BastionInstanceId:
+    Description: "Instance ID of the Bastion Host"
+    Value: !Ref BastionHost
+    Export:
+      Name: !Sub "${AWS::StackName}-bastionID"
+  AppInstanceId1:
+    Description: "Instance ID of the App Host1"
+    Value: !Ref AppHost1
+    Export:
+      Name: !Sub "${AWS::StackName}-app1ID"
+  AppInstanceId2:
+    Description: "Instance ID of the App Host2"
+    Value: !Ref AppHost2
+    Export:
+      Name: !Sub "${AWS::StackName}-app2ID"

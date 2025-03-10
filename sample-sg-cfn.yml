@@ -92,3 +92,23 @@ Resources:
       FromPort: 443
       ToPort: 443
       DestinationSecurityGroupId: !Ref webSG
+
+Outputs:
+  bastionSGId:
+    Description: Bastion SG ID
+    Value: !Ref bastionSG
+    Export:
+      Name: !Sub "${AWS::StackName}-bastionSGId"
+  
+  webSGId:
+    Description: Web SG ID
+    Value: !Ref webSG
+    Export:
+      Name: !Sub "${AWS::StackName}-webSGId"
+  
+  albGId:
+    Description: ALB SG ID
+    Value: !Ref albSG
+    Export:
+      Name: !Sub "${AWS::StackName}-albSGId"
+  
